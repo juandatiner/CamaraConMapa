@@ -33,7 +33,7 @@ Para conseguir la SHA-1 de debug si restringes la key:
 
 ## Permisos
 
-Se piden en runtime: `CAMERA`, `ACCESS_FINE_LOCATION`. En API ≤ 28 también `WRITE_EXTERNAL_STORAGE`.
+Se piden en runtime: `CAMERA`, `ACCESS_FINE_LOCATION`. En API ≤ 28 también `WRITE_EXTERNAL_STORAGE`. Gestionados con `accompanist-permissions` (`rememberMultiplePermissionsState`).
 
 ## Estructura
 
@@ -61,6 +61,8 @@ app/src/main/java/com/example/camaraconmapa/
 
 **Ruta.** Al tomar foto, llamo Directions API entre la foto anterior y la nueva, decodifico la polyline con `PolyUtil` y la concateno al `path`. Si falla, cae en línea recta.
 
+**Centrado suave del mapa.** `smoothCenterOn` anima la cámara en lugar de saltar. Primer centrado: animación directa a zoom 17. Si el salto es > 3 km, hace zoom-out a vista general, paneo y zoom-in (efecto "fly-to"). Distancias cortas: animación simple. Así evita el teletransporte abrupto que daba `move()`.
+
 ## Problemas comunes
 
 **Mapa en blanco.** Revisa que la key esté en `local.properties`, que **Maps SDK for Android** esté habilitada, y la SHA-1 autorizada. Logcat filtrando `Google Maps Android API` te dice el error exacto.
@@ -81,6 +83,6 @@ Si firmás, restringe la API key con la SHA-1 de release, no solo la de debug.
 
 ## Dependencias
 
-CameraX 1.3.4, Maps Compose 4.4.1, play-services-location 21.3.0, Coil 2.7.0, Compose BOM 2024.09, android-maps-utils 3.8.2 (para `PolyUtil`), exifinterface 1.3.7, core-splashscreen 1.0.1.
+CameraX 1.6.0, Maps Compose 8.2.2, play-services-location 21.3.0, play-services-maps 19.0.0, Coil 2.7.0, Compose BOM 2024.09, android-maps-utils 3.8.2 (para `PolyUtil`), exifinterface 1.3.7, core-splashscreen 1.0.1, accompanist-permissions 0.37.3.
 
 Catalog completo en `gradle/libs.versions.toml`.
