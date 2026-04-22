@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +66,7 @@ import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.launch
 
 private val FALLBACK_LOCATION = LatLng(4.7110, -74.0721) // Bogotá
 
@@ -77,6 +79,7 @@ fun MapSection(
 ) {
     val context = LocalContext.current
     val fused = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val scope = rememberCoroutineScope()
     var centered by remember { mutableStateOf(false) }
     var showGallery by remember { mutableStateOf(false) }
 
@@ -88,10 +91,47 @@ fun MapSection(
         context, Manifest.permission.ACCESS_FINE_LOCATION
     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
-    fun centerOn(loc: Location) {
+    suspend fun smoothCenterOn(loc: Location, targetZoom: Float = 17f) {
         val latLng = LatLng(loc.latitude, loc.longitude)
-        cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(latLng, 17f))
+        val current = cameraPositionState.position.target
+        val distOut = FloatArray(1)
+        Location.distanceBetween(
+            current.latitude, current.longitude,
+            latLng.latitude, latLng.longitude,
+            distOut
+        )
+        val distanceMeters = distOut[0]
+
+        if (!centered) {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(latLng, targetZoom),
+                durationMs = 800
+            )
+        } else if (distanceMeters > 3000f) {
+            val overview = minOf(cameraPositionState.position.zoom - 3f, 11f)
+            cameraPositionState.animate(
+                CameraUpdateFactory.zoomTo(overview),
+                durationMs = 350
+            )
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLng(latLng),
+                durationMs = 650
+            )
+            cameraPositionState.animate(
+                CameraUpdateFactory.zoomTo(targetZoom),
+                durationMs = 450
+            )
+        } else {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(latLng, targetZoom),
+                durationMs = 900
+            )
+        }
         centered = true
+    }
+
+    fun centerOn(loc: Location) {
+        scope.launch { smoothCenterOn(loc) }
     }
 
     LaunchedEffect(hasLocationPerm) {
